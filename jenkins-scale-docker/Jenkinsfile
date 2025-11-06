@@ -10,12 +10,37 @@ pipeline {
             }
         }
 
+        stage('Check Docker Compose Version') {
+            steps {
+                sh '''
+                    echo "Checking docker compose version:"
+                    docker compose version || echo "docker compose not found"
+                    echo "Checking docker-compose version:"
+                    docker-compose version || echo "docker-compose not found"
+                '''
+            }
+        }
+
         stage('Scale Containers') {
             steps {
                 sh '''
                     cd $WORKSPACE/jenkins-scale-docker
                     chmod +x scale.sh
-                    ./scale.sh
+                    # Choose the right Compose command based on what's found
+                    if docker compose version > /dev/null 2>&1; then
+                        echo "Using: docker compose"
+                        docker compose version
+                        ./scale.sh
+                    elif docker-compose version > /dev/null 2>&1; then
+                        echo "Using: docker-compose"
+                        docker-compose version
+                        # Replace 'docker compose' with 'docker-compose' in scale.sh if needed
+                        sed -i 's/docker compose/docker-compose/g' scale.sh
+                        ./scale.sh
+                    else
+                        echo "No Docker Compose found! Please install Docker Compose v2."
+                        exit 1
+                    fi
                 '''
             }
         }
